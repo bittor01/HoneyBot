@@ -7,7 +7,6 @@ yarn-error.log*
 
 # Docker & Environment
 .env
-docker-compose.yml
 
 # IDE / OS
 .vscode/

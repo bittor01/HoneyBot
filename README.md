@@ -1,0 +1,70 @@
+# HoneyBot
+
+HoneyBot is a specialized Discord bot designed to protect your server from spam and unauthorized posts by monitoring specific "honeypot" channels. Anyone who posts in these channels is immediately and permanently banned.
+
+## Features
+
+- **Automated Bans:** Instant permanent ban for any user who posts in a monitored channel.
+- **Message Cleanup:** Automatically deletes the user's messages from the last 7 days upon banning.
+- **Pinned Warnings:** Maintains a pinned embed at the top of each monitored channel warning users not to post.
+- **Ban Counters:** Keeps track of how many users have been caught in each specific channel.
+- **Logging:** Sends ban notifications to a designated log channel.
+- **Dockerized:** Easy deployment using Docker and Docker Compose.
+
+## Prerequisites
+
+- [Node.js](https://nodejs.org/) (v20+) or [Docker](https://www.docker.com/)
+- A Discord Bot Token with the following permissions:
+  - `Manage Messages` (to pin the warning message)
+  - `Ban Members` (to perform the bans)
+  - `Read Messages/View Channels`
+  - `Send Messages`
+  - `Embed Links`
+  - `Read Message History`
+- **Intents Required:**
+  - `Guilds`
+  - `GuildMessages`
+  - `MessageContent`
+
+## Setup Instructions
+
+### 1. Discord Developer Portal
+1. Go to the [Discord Developer Portal](https://discord.com/developers/applications).
+2. Create a new application and add a bot.
+3. Under the **Bot** tab, enable the **Message Content Intent**.
+4. Copy your bot token.
+
+### 2. Configuration
+1. Clone this repository.
+2. Copy `.env.example` to `.env`.
+   ```bash
+   cp .env.example .env
+   ```
+3. Fill in your `.env` file:
+   - `DISCORD_TOKEN`: Your bot token.
+   - `MONITORED_CHANNELS`: Comma-separated list of Channel IDs to watch.
+   - `LOG_CHANNEL_ID`: Channel ID where ban logs should be sent.
+   - `BAN_REASON`: (Optional) The reason recorded in the audit log.
+   - `NOTICE_TITLE` / `NOTICE_BODY`: Customize the warning message.
+
+### 3. Deployment
+
+#### Using Docker (Recommended)
+1. Ensure Docker and Docker Compose are installed.
+2. Run the bot:
+   ```bash
+   docker-compose up -d
+   ```
+
+#### Using Node.js
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+2. Start the bot:
+   ```bash
+   npm start
+   ```
+
+## Safety Note
+**Warning:** This bot is extremely aggressive. Ensure that the bot **only** has permission to see the channels you want it to monitor. Any user (including administrators, if the bot has a higher role) who posts in a monitored channel will be banned.

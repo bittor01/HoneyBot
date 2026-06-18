@@ -1,0 +1,12 @@
+services:
+  honeybot:
+    build: .
+    container_name: honeybot
+    restart: unless-stopped
+    volumes:
+      # Mount the .env file for configuration
+      - ./.env:/app/.env:ro
+      # Mount the data directory for persistence
+      - ./data:/app/data
+    environment:
+      - NODE_ENV=production
