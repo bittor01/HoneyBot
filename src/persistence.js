@@ -1,5 +1,5 @@
 /**
- * Persistence layer for HoneyBot to track ban counts.
+ * Persistence layer for HoneyBot to track ban counts and notice message IDs.
  * This module manages a local JSON file to ensure data survives bot restarts.
  */
 
@@ -8,17 +8,17 @@ const fs = require('fs');
 // Import the path module to handle and resolve file and directory paths safely.
 const path = require('path');
 
-// Define the absolute path to the JSON file where ban counts are stored.
+// Define the absolute path to the JSON file where data is stored.
 // It is located in the 'data' directory at the project root.
-const COUNTS_FILE = path.join(__dirname, '..', 'data', 'counts.json');
+const STORAGE_FILE = path.join(__dirname, '..', 'data', 'storage.json');
 
 /**
- * Ensures that the directory for the counts file exists.
+ * Ensures that the directory for the storage file exists.
  * If the directory is missing, it creates it recursively.
  */
 function ensureDataDir() {
-  // Extract the directory path from the full counts file path.
-  const dir = path.dirname(COUNTS_FILE);
+  // Extract the directory path from the full storage file path.
+  const dir = path.dirname(STORAGE_FILE);
   try {
     // Check if the directory exists on the file system.
     if (!fs.existsSync(dir)) {
@@ -32,24 +32,24 @@ function ensureDataDir() {
 }
 
 /**
- * Reads the current ban counts from the JSON storage file.
- * @returns {Object} An object mapping Discord channel IDs to their respective ban counts.
+ * Reads the current data from the JSON storage file.
+ * @returns {Object} The stored data object.
  */
-function readCounts() {
+function readData() {
   // First, make sure the data directory is present.
   ensureDataDir();
-  // Check if the counts file actually exists before attempting to read it.
-  if (fs.existsSync(COUNTS_FILE)) {
+  // Check if the storage file actually exists before attempting to read it.
+  if (fs.existsSync(STORAGE_FILE)) {
     try {
       // Read the entire file content as a UTF-8 encoded string.
-      const data = fs.readFileSync(COUNTS_FILE, 'utf8');
+      const data = fs.readFileSync(STORAGE_FILE, 'utf8');
       // Parse the JSON string into a JavaScript object.
       // If the file is empty or contains invalid JSON, this may throw an error.
       return JSON.parse(data) || {};
     } catch (error) {
       // Log an error if the file reading or JSON parsing fails.
-      console.error('Error reading or parsing counts file:', error);
-      // Return an empty object as a safe fallback to prevent bot crashes.
+      console.error('Error reading or parsing storage file:', error);
+      // Return an empty object as a safe fallback.
       return {};
     }
   }
@@ -58,22 +58,55 @@ function readCounts() {
 }
 
 /**
- * Writes the provided counts object to the JSON storage file.
- * @param {Object} counts - An object mapping channel IDs to ban counts.
+ * Writes the provided data object to the JSON storage file.
+ * @param {Object} data - The data to store.
  */
-function writeCounts(counts) {
+function writeData(data) {
   // Ensure the data directory exists before trying to write the file.
   ensureDataDir();
   try {
-    // Convert the counts object into a formatted JSON string (2-space indentation).
-    const data = JSON.stringify(counts, null, 2);
-    // Write the JSON string to the counts file synchronously.
-    // This ensures the file is updated before the function returns.
-    fs.writeFileSync(COUNTS_FILE, data, 'utf8');
+    // Convert the data object into a formatted JSON string (2-space indentation).
+    const json = JSON.stringify(data, null, 2);
+    // Write the JSON string to the storage file synchronously.
+    fs.writeFileSync(STORAGE_FILE, json, 'utf8');
   } catch (error) {
     // Log an error if writing to the file system fails.
-    console.error('Error writing to counts file:', error);
+    console.error('Error writing to storage file:', error);
   }
+}
+
+/**
+ * Gets the data for a specific channel.
+ * @param {string} channelId - The Discord channel ID.
+ * @returns {Object} The data for the channel.
+ */
+function getChannelData(channelId) {
+  // Read all stored data.
+  const data = readData();
+  // Ensure the channels mapping exists.
+  if (!data.channels) data.channels = {};
+  // Return the specific channel's data or a default object if not found.
+  return data.channels[channelId] || { count: 0, noticeId: null };
+}
+
+/**
+ * Updates the data for a specific channel.
+ * @param {string} channelId - The Discord channel ID.
+ * @param {Object} updates - The fields to update in the channel's data.
+ */
+function updateChannelData(channelId, updates) {
+  // Read all stored data.
+  const data = readData();
+  // Ensure the channels mapping exists.
+  if (!data.channels) data.channels = {};
+  // Initialize channel data if it doesn't exist.
+  if (!data.channels[channelId]) data.channels[channelId] = { count: 0, noticeId: null };
+
+  // Apply the updates to the channel's data object.
+  data.channels[channelId] = { ...data.channels[channelId], ...updates };
+
+  // Persist the updated data object back to the JSON file.
+  writeData(data);
 }
 
 /**
@@ -82,31 +115,50 @@ function writeCounts(counts) {
  * @returns {number} The current ban count for that channel, defaulting to 0.
  */
 function getCount(channelId) {
-  // Load the latest counts from the persistent storage.
-  const counts = readCounts();
-  // Return the count associated with the channel ID, or 0 if it hasn't been tracked yet.
-  return counts[channelId] || 0;
+  // Return the count field from the channel data.
+  return getChannelData(channelId).count;
 }
 
 /**
  * Increments the ban count for a specific Discord channel by one.
- * Saves the updated count to the persistent storage.
  * @param {string} channelId - The unique ID of the Discord channel.
  * @returns {number} The new, updated ban count for the channel.
  */
 function incrementCount(channelId) {
-  // Load the current counts from the storage file.
-  const counts = readCounts();
-  // Increment the existing count or initialize it to 1 if it doesn't exist.
-  counts[channelId] = (counts[channelId] || 0) + 1;
-  // Persist the updated counts object back to the JSON file.
-  writeCounts(counts);
-  // Return the newly incremented count value.
-  return counts[channelId];
+  // Get current data.
+  const current = getChannelData(channelId);
+  // Calculate the next count.
+  const nextCount = (current.count || 0) + 1;
+  // Update the stored count.
+  updateChannelData(channelId, { count: nextCount });
+  // Return the new count.
+  return nextCount;
+}
+
+/**
+ * Retrieves the stored notice message ID for a specific channel.
+ * @param {string} channelId - The Discord channel ID.
+ * @returns {string|null} The notice message ID if it exists, otherwise null.
+ */
+function getNoticeId(channelId) {
+  // Return the noticeId field from the channel data.
+  return getChannelData(channelId).noticeId;
+}
+
+/**
+ * Stores the notice message ID for a specific channel.
+ * @param {string} channelId - The Discord channel ID.
+ * @param {string} noticeId - The notice message ID.
+ */
+function setNoticeId(channelId, noticeId) {
+  // Update the stored noticeId.
+  updateChannelData(channelId, { noticeId });
 }
 
 // Export the public API of the persistence module.
 module.exports = {
   getCount,
-  incrementCount
+  incrementCount,
+  getNoticeId,
+  setNoticeId
 };

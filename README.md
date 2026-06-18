@@ -9,7 +9,7 @@ HoneyBot is a specialized Discord bot designed to protect your server from spam 
 - **Pinned Warnings:** Maintains a pinned embed at the top of each monitored channel warning users not to post.
 - **Ban Counters:** Keeps track of how many users have been caught in each specific channel.
 - **Logging:** Sends ban notifications to a designated log channel.
-- **Least Privilege:** Operates using only **Standard Intents**. Does not require any toggles in the Discord Developer Portal (like "Message Content").
+- **Least Privilege:** Operates using only **Standard Intents**. No special toggles are required in the Discord Developer Portal.
 - **Self-Protection:** Internal logic prevents the bot from ever banning itself.
 - **Dockerized:** Easy deployment using Docker and Docker Compose.
 
@@ -28,7 +28,7 @@ HoneyBot is a specialized Discord bot designed to protect your server from spam 
 ### 1. Discord Developer Portal
 1. Go to the [Discord Developer Portal](https://discord.com/developers/applications).
 2. Create a new application and add a bot.
-3. Under the **Bot** tab, ensure all **Privileged Gateway Intents** (Presence, Server Members, Message Content) are **DISABLED**. The bot uses only standard intents which are enabled by default.
+3. Under the **Bot** tab, you can leave all **Privileged Gateway Intents** (Presence, Server Members, Message Content) **DISABLED**.
 4. Copy your bot token.
 
 ### 2. Configuration
