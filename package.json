@@ -1,0 +1,23 @@
+{
+  "name": "honeybot",
+  "version": "1.0.0",
+  "description": "A Discord bot that bans anyone who posts in specific honeypot channels.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "dependencies": {
+    "discord.js": "14.16.3",
+    "dotenv": "16.4.5",
+    "undici": "6.24.1"
+  },
+  "overrides": {
+    "undici": "6.24.1"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "author": "Jules",
+  "license": "MIT"
+}

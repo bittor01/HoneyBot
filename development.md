@@ -5,17 +5,18 @@ This document tracks the progress of the project and provides instructions for d
 ## 1. Roadmap & Progress Tracker
 
 ### Milestone 1: Foundation
-- [ ] Project initialization
-- [ ] Basic project structure
-- [ ] Configuration management (.env, docker-compose)
+- [x] Project initialization
+- [x] Basic project structure
+- [x] Configuration management (.env, docker-compose)
 
 ### Milestone 2: Core Functionality
-- [ ] ...
-- [ ] ...
+- [x] Implementation of persistence layer
+- [x] Implementation of HoneyBot core logic (bans, notices, counters)
+- [x] Support for multiple monitored channels
 
 ### Milestone 3: Testing & Polish
-- [ ] ...
-- [ ] ...
+- [x] Dockerization
+- [x] Documentation (README, design updates)
 
 ## 2. Docker Instructions
 
