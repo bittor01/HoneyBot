@@ -16,8 +16,8 @@ This document captures the lessons learned and best practices established during
 *   **Recovery:** When a call fails, log the specific reason and ensure the bot remains in a stable state.
 
 ### 3. Explicit Permission Checks
-*   **Insight:** Attempting an action like `ban()` without proper permissions results in a 403 Forbidden error and can contribute to rate limiting.
-*   **Advice:** Always verify `guild.members.me.permissions.has(...)` before calling administrative methods.
+*   **Insight:** Attempting an action like `ban()` or `pin()` without proper permissions results in a 403 Forbidden error and can contribute to rate limiting.
+*   **Advice:** Always verify `guild.members.me.permissions.has(...)` or `permissionsIn(channel).has(...)` before calling administrative methods. Favor granular permissions (e.g., `PinMessages`) over broad ones (e.g., `ManageMessages`) where possible.
 
 ### 4. Configuration Sanitization
 *   **Insight:** Environment variables are often messy (trailing spaces, commas, etc.).

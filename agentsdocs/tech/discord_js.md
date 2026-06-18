@@ -16,7 +16,7 @@ This document outlines the standards for Discord bot development using `discord.
 
 ## Permission Management
 
-*   **Rule:** Before performing any administrative action (ban, kick, manage messages), explicitly check that the bot has the necessary permissions.
+*   **Rule:** Before performing any administrative action (ban, kick, pin messages), explicitly check that the bot has the necessary permissions. Use granular permissions like `PinMessages` when available.
 *   **Example:**
     ```javascript
     if (!message.guild.members.me.permissions.has(PermissionsBitField.Flags.BanMembers)) {

@@ -107,16 +107,28 @@ async function updateNotice(channel) {
       // Update our cache with the current message ID.
       noticeMessages.set(channel.id, noticeMessage.id);
     } else {
+      // Check if the bot has permission to pin messages in the channel.
+      // We use the granular PinMessages permission if available.
+      const canPin = channel.guild.members.me.permissionsIn(channel).has(PermissionsBitField.Flags.PinMessages || PermissionsBitField.Flags.ManageMessages);
+
       // If no notice exists, send a new one to the channel.
       const newMessage = await channel.send({ embeds: [embed] });
-      // Pin the newly sent message to the top of the channel.
-      await newMessage.pin();
+
+      // Only attempt to pin if the bot has the required permissions.
+      if (canPin) {
+        // Pin the newly sent message to the top of the channel.
+        await newMessage.pin();
+      } else {
+        // Log a warning if the notice couldn't be pinned.
+        console.warn(`Missing PinMessages permission in channel ${channel.id}. Notice was sent but not pinned.`);
+      }
+
       // Store the new message ID in our cache.
       noticeMessages.set(channel.id, newMessage.id);
     }
   } catch (error) {
     // Log any errors encountered during the notice update process.
-    // This could happen due to missing "Send Messages" or "Manage Messages" permissions.
+    // This could happen due to missing "Send Messages" or "Pin Messages" permissions.
     console.error(`Failed to update notice in channel ${channel.id}:`, error);
   }
 }
