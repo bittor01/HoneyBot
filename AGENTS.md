@@ -23,6 +23,7 @@ Identify the technologies used in the current project and follow the correspondi
 *   [**Docker & Traefik**](agentsdocs/tech/docker_traefik.md): Rules for containerization, dial-in/out services, and `.local.lan` domain setup.
 *   [**Electron**](agentsdocs/tech/electron.md): Standards for portable EXE builds and IPC synchronization.
 *   [**Node.js & NPM**](agentsdocs/tech/node_npm.md): Specifics for NPM audit, `.nvmrc`, and React/Vite.
+*   [**Discord.js**](agentsdocs/tech/discord_js.md): Standards for bot events, defensive API usage, and permission checks.
 *   [**Python**](agentsdocs/tech/python_pip.md): PIM usage, requirements pinning, and extensive commenting requirements.
 *   [**Rust**](agentsdocs/tech/rust.md): Cargo pinning, security audits, and extensive commenting requirements.
 *   [**LLM Harnessing**](agentsdocs/tech/llm_harnessing.md): Standardized agentic architectures (Planner-Executor-Critic) and context management.
