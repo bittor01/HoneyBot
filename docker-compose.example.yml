@@ -1,0 +1,15 @@
+services:
+  app:
+    image: node:20-slim
+    container_name: jules_app
+    working_dir: /app
+    volumes:
+      - .:/app
+    environment:
+      - NODE_ENV=development
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    # Note: Traefik labels are omitted here as this is a generic example.
+    # For services requiring inbound access, refer to templates/docker-compose.yml
+    # for the Traefik v3 configuration pattern.
