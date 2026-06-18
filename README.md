@@ -9,7 +9,8 @@ HoneyBot is a specialized Discord bot designed to protect your server from spam 
 - **Pinned Warnings:** Maintains a pinned embed at the top of each monitored channel warning users not to post.
 - **Ban Counters:** Keeps track of how many users have been caught in each specific channel.
 - **Logging:** Sends ban notifications to a designated log channel.
-- **Least Privilege:** Operates without the privileged Message Content intent and does not require Read Message History permission.
+- **Least Privilege:** Operates using only **Standard Intents**. Does not require the privileged "Message Content" intent or "Read Message History" permission.
+- **Self-Protection:** Internal logic prevents the bot from ever banning itself.
 - **Dockerized:** Easy deployment using Docker and Docker Compose.
 
 ## Prerequisites
@@ -21,16 +22,16 @@ HoneyBot is a specialized Discord bot designed to protect your server from spam 
   - `Embed Links`
   - `Pin Messages` (to pin the warning message)
   - `Ban Members` (to perform the bans)
-- **Intents Required:**
+- **Intents Required (Standard):**
   - `Guilds`
-  - `GuildMessages`
+  - `GuildMessages` (Allows detecting *that* a message was sent; does not require content access)
 
 ## Setup Instructions
 
 ### 1. Discord Developer Portal
 1. Go to the [Discord Developer Portal](https://discord.com/developers/applications).
 2. Create a new application and add a bot.
-3. Under the **Bot** tab, ensure **Message Content Intent** is **DISABLED** (unless you want to customize the code to read message content).
+3. Under the **Bot** tab, you can keep all "Privileged Gateway Intents" **DISABLED**.
 4. Copy your bot token.
 
 ### 2. Configuration
@@ -67,4 +68,4 @@ HoneyBot is a specialized Discord bot designed to protect your server from spam 
    ```
 
 ## Safety Note
-**Warning:** This bot is extremely aggressive. Ensure that the bot **only** has permission to see the channels you want it to monitor. Any user (including administrators, if the bot has a higher role) who posts in a monitored channel will be banned.
+**Warning:** This bot is extremely aggressive. Ensure that the bot **only** has permission to see the channels you want it to monitor. Any user (including administrators, if the bot has a higher role) who posts in a monitored channel will be banned. The bot is hardcoded to ignore its own messages to prevent self-banning.
