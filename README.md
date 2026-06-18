@@ -17,7 +17,7 @@ HoneyBot is a specialized Discord bot designed to protect your server from spam 
 
 - [Node.js](https://nodejs.org/) (v20+) or [Docker](https://www.docker.com/)
 - A Discord Bot Token with the following permissions:
-  - `View Channels`
+  - `View Channels` (Required only for the specific honeypot channels)
   - `Send Messages`
   - `Embed Links`
   - `Pin Messages` (to pin the warning message)
@@ -67,5 +67,12 @@ HoneyBot is a specialized Discord bot designed to protect your server from spam 
    npm start
    ```
 
-## Safety Note
-**Warning:** This bot is extremely aggressive. Ensure that the bot **only** has permission to see the channels you want it to monitor. Any user (including administrators, if the bot has a higher role) who posts in a monitored channel will be banned. The bot is hardcoded to ignore its own messages to prevent self-banning.
+## 🛡️ Critical Safety Setup (Read Carefully!)
+**This bot is extremely aggressive and will ban anyone who posts in a channel it can see.** To prevent accidental bans of your community members:
+
+1.  **Invite the bot "Blind"**: When inviting the bot to your server, do **NOT** grant it the "Administrator" permission or global "View Channels" permissions.
+2.  **Targeted Channel Access**:
+    *   Go to the settings of your specific **honeypot/monitored channels**.
+    *   Under **Permissions**, add the HoneyBot.
+    *   Explicitly grant it the `View Channel`, `Send Messages`, `Embed Links`, and `Pin Messages` permissions **only in those specific channels**.
+3.  **Role Hierarchy**: Ensure the HoneyBot's role is positioned correctly. It can only ban users whose highest role is *lower* than the bot's role. It will ignore its own messages to prevent self-banning.
