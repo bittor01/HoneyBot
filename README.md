@@ -9,28 +9,26 @@ HoneyBot is a specialized Discord bot designed to protect your server from spam 
 - **Pinned Warnings:** Maintains a pinned embed at the top of each monitored channel warning users not to post.
 - **Ban Counters:** Keeps track of how many users have been caught in each specific channel.
 - **Logging:** Sends ban notifications to a designated log channel.
-- **Least Privilege:** Operates without the privileged Message Content intent and does not require Read Message History permission.
+- **Least Privilege:** Operates using only **Standard Intents**. No special toggles are required in the Discord Developer Portal.
+- **Self-Protection:** Internal logic prevents the bot from ever banning itself.
 - **Dockerized:** Easy deployment using Docker and Docker Compose.
 
 ## Prerequisites
 
 - [Node.js](https://nodejs.org/) (v20+) or [Docker](https://www.docker.com/)
 - A Discord Bot Token with the following permissions:
-  - `View Channels`
+  - `View Channels` (Required only for the specific honeypot channels)
   - `Send Messages`
   - `Embed Links`
   - `Pin Messages` (to pin the warning message)
   - `Ban Members` (to perform the bans)
-- **Intents Required:**
-  - `Guilds`
-  - `GuildMessages`
 
 ## Setup Instructions
 
 ### 1. Discord Developer Portal
 1. Go to the [Discord Developer Portal](https://discord.com/developers/applications).
 2. Create a new application and add a bot.
-3. Under the **Bot** tab, ensure **Message Content Intent** is **DISABLED** (unless you want to customize the code to read message content).
+3. Under the **Bot** tab, you can leave all **Privileged Gateway Intents** (Presence, Server Members, Message Content) **DISABLED**.
 4. Copy your bot token.
 
 ### 2. Configuration
@@ -66,5 +64,12 @@ HoneyBot is a specialized Discord bot designed to protect your server from spam 
    npm start
    ```
 
-## Safety Note
-**Warning:** This bot is extremely aggressive. Ensure that the bot **only** has permission to see the channels you want it to monitor. Any user (including administrators, if the bot has a higher role) who posts in a monitored channel will be banned.
+## 🛡️ Critical Safety Setup (Read Carefully!)
+**This bot is extremely aggressive and will ban anyone who posts in a channel it can see.** To prevent accidental bans of your community members:
+
+1.  **Invite the bot "Blind"**: When inviting the bot to your server, do **NOT** grant it the "Administrator" permission or global "View Channels" permissions.
+2.  **Targeted Channel Access**:
+    *   Go to the settings of your specific **honeypot/monitored channels**.
+    *   Under **Permissions**, add the HoneyBot.
+    *   Explicitly grant it the `View Channel`, `Send Messages`, `Embed Links`, and `Pin Messages` permissions **only in those specific channels**.
+3.  **Role Hierarchy**: Ensure the HoneyBot's role is positioned correctly. It can only ban users whose highest role is *lower* than the bot's role. It will ignore its own messages to prevent self-banning.
