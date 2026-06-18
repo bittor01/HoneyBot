@@ -1,31 +1,46 @@
 /**
  * HoneyBot - A Discord bot that bans anyone who posts in specific channels.
+ * This bot helps maintain "honeypot" channels to catch and ban spammers automatically.
  */
 
-// Load environment variables from .env file.
+// Load environment variables from .env file to configure the bot.
 require('dotenv').config();
 
-// Import necessary classes from discord.js.
-const { Client, GatewayIntentBits, EmbedBuilder, PermissionsBitField } = require('discord.js');
-// Import persistence layer for tracking counts.
+// Import necessary classes and constants from the discord.js library.
+// Client: The main hub for interacting with the Discord API.
+// GatewayIntentBits: Used to specify which events the bot should receive.
+// EmbedBuilder: Helper to create rich embed messages.
+// PermissionsBitField: Used to check for specific member permissions.
+// Events: Contains a list of all available Discord events.
+const { Client, GatewayIntentBits, EmbedBuilder, PermissionsBitField, Events } = require('discord.js');
+
+// Import the persistence layer to manage and track ban counts across sessions.
 const persistence = require('./persistence');
 
-// Retrieve configuration from environment variables.
+// Retrieve the bot token from environment variables.
 const TOKEN = process.env.DISCORD_TOKEN;
-// Parse comma-separated list of monitored channel IDs.
-const MONITORED_CHANNELS = (process.env.MONITORED_CHANNELS || '').split(',').map(id => id.trim()).filter(id => id);
-// Get log channel ID.
+
+// Parse the MONITORED_CHANNELS environment variable.
+// It expects a comma-separated list of channel IDs.
+const MONITORED_CHANNELS = (process.env.MONITORED_CHANNELS || '')
+  .split(',') // Split by comma.
+  .map(id => id.trim()) // Remove any surrounding whitespace.
+  .filter(id => id); // Remove any empty strings.
+
+// Retrieve the log channel ID where ban events will be reported.
 const LOG_CHANNEL_ID = process.env.LOG_CHANNEL_ID;
-// Get ban reason.
-const BAN_REASON = process.env.BAN_REASON || null;
-// Get notice embed settings.
+
+// Retrieve the ban reason to be used in the audit log.
+const BAN_REASON = process.env.BAN_REASON || 'Posted in honeypot channel.';
+
+// Retrieve settings for the notice embed displayed in honeypot channels.
 const NOTICE_TITLE = process.env.NOTICE_TITLE || '⚠️ WARNING: DO NOT POST HERE ⚠️';
 const NOTICE_BODY = process.env.NOTICE_BODY || 'This channel is for monitoring only. Any posts here will result in an immediate and permanent ban.';
 
-// Initialize the Discord client with required intents.
-// Guilds: To access channel information.
-// GuildMessages: To receive message events.
-// MessageContent: To read the content of messages (required to trigger the event).
+// Initialize the Discord client with the required gateway intents.
+// Guilds: Required to access guild and channel information.
+// GuildMessages: Required to receive message creation events in guilds.
+// MessageContent: Required to read the content of messages for verification.
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -34,162 +49,187 @@ const client = new Client({
   ]
 });
 
-// Map to store the notice message ID for each channel to avoid reposting if one already exists.
+// A local cache (Map) to store the message ID of the notice embed for each channel.
+// This helps the bot avoid searching for the message every time it needs an update.
 const noticeMessages = new Map();
 
 /**
- * Creates or updates the pinned notice embed in a channel.
- * @param {TextChannel} channel - The Discord channel to update.
+ * Creates or updates a pinned notice embed in a specific channel.
+ * The notice displays a warning and the total number of users "caught" (banned).
+ * @param {TextChannel} channel - The Discord channel where the notice should be managed.
  */
 async function updateNotice(channel) {
-  // Get the current ban count for this channel.
+  // Fetch the current ban count for this specific channel from persistence.
   const count = persistence.getCount(channel.id);
 
-  // Create the embed.
+  // Construct a new EmbedBuilder instance for the warning message.
   const embed = new EmbedBuilder()
-    // Set embed color to red for warning.
+    // Set the embed color to red (hex 0xFF0000) to signify a warning.
     .setColor(0xFF0000)
-    // Set title from config.
+    // Set the title of the embed from the configuration.
     .setTitle(NOTICE_TITLE)
-    // Set description from config.
+    // Set the main description body from the configuration.
     .setDescription(NOTICE_BODY)
-    // Add the "Caught" count field.
+    // Add a field showing the cumulative number of bans in this channel.
     .addFields({ name: 'Total Caught', value: count.toString() })
-    // Add a timestamp.
+    // Add a timestamp to show when the notice was last updated.
     .setTimestamp();
 
   try {
-    // Check if we already have a notice message ID for this channel in our cache.
+    // Attempt to retrieve a cached message ID for this channel's notice.
     let noticeMessageId = noticeMessages.get(channel.id);
+    // Variable to hold the message object if found.
     let noticeMessage = null;
 
+    // If we have a cached ID, try to fetch the actual message from Discord.
     if (noticeMessageId) {
       try {
-        // Try to fetch the cached message.
+        // Fetch the message by ID from the channel.
         noticeMessage = await channel.messages.fetch(noticeMessageId);
       } catch (e) {
-        // If message was deleted, we'll search for a new one.
+        // If fetching fails (e.g., message was deleted), clear the reference.
         noticeMessage = null;
       }
     }
 
+    // If no cached message was found or it was deleted, search the pinned messages.
     if (!noticeMessage) {
-      // Search for existing pinned messages by the bot.
+      // Fetch all pinned messages in the current channel.
       const pinnedMessages = await channel.messages.fetchPinned();
-      // Find the first pinned message from the bot.
+      // Look for a pinned message authored by the bot itself.
       noticeMessage = pinnedMessages.find(m => m.author.id === client.user.id);
     }
 
+    // If we found an existing notice message, edit it with the updated embed.
     if (noticeMessage) {
-      // Update the existing pinned message.
+      // Update the content of the message.
       await noticeMessage.edit({ embeds: [embed] });
-      // Store reference in cache.
+      // Update our cache with the current message ID.
       noticeMessages.set(channel.id, noticeMessage.id);
     } else {
-      // Post a new notice message if none found.
+      // Check if the bot has permission to pin messages in the channel.
+      // We use the granular PinMessages permission if available.
+      const canPin = channel.guild.members.me.permissionsIn(channel).has(PermissionsBitField.Flags.PinMessages || PermissionsBitField.Flags.ManageMessages);
+
+      // If no notice exists, send a new one to the channel.
       const newMessage = await channel.send({ embeds: [embed] });
-      // Pin the new message.
-      await newMessage.pin();
-      // Store reference.
+
+      // Only attempt to pin if the bot has the required permissions.
+      if (canPin) {
+        // Pin the newly sent message to the top of the channel.
+        await newMessage.pin();
+      } else {
+        // Log a warning if the notice couldn't be pinned.
+        console.warn(`Missing PinMessages permission in channel ${channel.id}. Notice was sent but not pinned.`);
+      }
+
+      // Store the new message ID in our cache.
       noticeMessages.set(channel.id, newMessage.id);
     }
   } catch (error) {
-    // Log errors (e.g., missing permissions).
+    // Log any errors encountered during the notice update process.
+    // This could happen due to missing "Send Messages" or "Pin Messages" permissions.
     console.error(`Failed to update notice in channel ${channel.id}:`, error);
   }
 }
 
-// Event: Bot is ready.
-client.once('ready', async () => {
-  // Log successful login.
+// Event listener that triggers once when the client successfully connects to Discord.
+// We use Events.ClientReady instead of the deprecated 'ready' string.
+client.once(Events.ClientReady, async () => {
+  // Log the bot's username and discriminator to the console.
   console.log(`Logged in as ${client.user.tag}!`);
-  // Log monitored channels.
+  // Log the list of channel IDs currently being monitored.
   console.log(`Monitoring channels: ${MONITORED_CHANNELS.join(', ')}`);
 
-  // Initialize notices for each monitored channel.
+  // Loop through each configured monitored channel ID to initialize notices.
   for (const channelId of MONITORED_CHANNELS) {
     try {
-      // Fetch the channel object.
+      // Fetch the full channel object from the Discord API.
       const channel = await client.channels.fetch(channelId);
-      // Check if it's a text-based channel.
+      // Check if the channel exists and is a text-based channel.
       if (channel && channel.isTextBased()) {
-        // Create/Update the notice.
+        // Initialize or update the warning notice in the channel.
         await updateNotice(channel);
       } else {
-        // Log if channel is invalid or not text-based.
+        // Warn if the ID points to an invalid or non-text channel.
         console.warn(`Channel ${channelId} is not a valid text channel.`);
       }
     } catch (error) {
-      // Log if fetching channel fails.
+      // Log errors if the bot cannot access a specific channel.
       console.error(`Could not fetch channel ${channelId}:`, error);
     }
   }
 });
 
-// Event: Message created.
-client.on('messageCreate', async (message) => {
-  // Ignore messages from the bot itself to prevent loops.
+// Event listener that triggers whenever a new message is created in a guild.
+client.on(Events.MessageCreate, async (message) => {
+  // Stop processing if the message was sent by the bot itself.
   if (message.author.id === client.user.id) return;
 
-  // Check if the message is in a monitored channel.
+  // Check if the message was posted in one of the monitored "honeypot" channels.
   if (MONITORED_CHANNELS.includes(message.channel.id)) {
-    // Check if the bot has permission to ban members in the guild.
+    // Verify that the bot has the "Ban Members" permission in the current guild.
     if (!message.guild.members.me.permissions.has(PermissionsBitField.Flags.BanMembers)) {
-      // Log missing permissions.
+      // Log an error if the bot lacks the necessary permissions to take action.
       console.error(`Missing BanMembers permission in guild ${message.guild.name}`);
       return;
     }
 
     try {
-      // Increment the "Caught" count in persistence.
+      // Increment the persistent ban counter for this specific channel.
       persistence.incrementCount(message.channel.id);
 
-      // Log the event details.
+      // Construct a log message for the console.
       const logMessage = `Banning ${message.author.tag} (${message.author.id}) for posting in ${message.channel.name}.`;
+      // Output the ban action to the console.
       console.log(logMessage);
 
-      // Ban the user.
-      // deleteMessageSeconds: 604800 is 7 days (maximum allowed by Discord API).
-      // This removes the spam message along with the user.
+      // Execute the ban on the user who posted in the honeypot.
+      // deleteMessageSeconds: 604800 (7 days) will remove all messages from this user in the last week.
       await message.guild.members.ban(message.author, {
-        reason: BAN_REASON || 'Posted in honeypot channel.',
+        reason: BAN_REASON,
         deleteMessageSeconds: 604800
       });
 
-      // Update the notice embed to reflect the new count.
+      // Update the pinned notice embed to reflect the incremented "Caught" count.
       await updateNotice(message.channel);
 
-      // Send a log entry to the designated log channel if configured.
+      // If a log channel ID is configured, send a detailed report there.
       if (LOG_CHANNEL_ID) {
         try {
-          // Fetch log channel.
+          // Fetch the log channel object.
           const logChannel = await client.channels.fetch(LOG_CHANNEL_ID);
-          // Check if log channel is valid.
+          // Check if the log channel is valid and text-based.
           if (logChannel && logChannel.isTextBased()) {
-            // Create a log embed.
+            // Build a log embed for the administrative staff.
             const logEmbed = new EmbedBuilder()
+              // Use black color (0x000000) for log entries.
               .setColor(0x000000)
+              // Set the title of the log message.
               .setTitle('Member Banned')
+              // Add details about the banned user, the channel, and message content.
               .addFields(
                 { name: 'User', value: `${message.author.tag} (${message.author.id})` },
                 { name: 'Channel', value: `<#${message.channel.id}>` },
                 { name: 'Content Preview', value: message.content.substring(0, 1024) || '*No content*' }
               )
+              // Add a timestamp to the log entry.
               .setTimestamp();
-            // Send log.
+            // Send the embed to the designated log channel.
             await logChannel.send({ embeds: [logEmbed] });
           }
         } catch (logError) {
-          // Log failure to send log entry.
+          // Log any errors that occur while trying to send the log message.
           console.error('Failed to send log to log channel:', logError);
         }
       }
     } catch (error) {
-      // Log failures to ban.
+      // Log any errors that occur during the banning process.
+      // This could happen if the user is an owner or has higher permissions than the bot.
       console.error(`Failed to ban ${message.author.tag}:`, error);
     }
   }
 });
 
-// Log in to Discord.
+// Authenticate and log the client into Discord using the provided token.
 client.login(TOKEN);
